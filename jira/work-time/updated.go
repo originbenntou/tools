@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"net/url"
 	"strconv"
 	"time"
 )
@@ -24,7 +23,9 @@ type resUpdated struct {
 
 func getUpdated() *resUpdated {
 	client := &http.Client{Timeout: time.Duration(10) * time.Second}
-	resp, err := client.Do(createRequest())
+	request := customRequest("GET", UPDATED_PATH, getTerm(), nil)
+
+	resp, err := client.Do(request)
 	if err != nil {
 		log.Printf("fail client do: %v\n", err)
 		return nil
@@ -47,26 +48,7 @@ func getUpdated() *resUpdated {
 	return res
 }
 
-func createRequest() *http.Request {
-	req, err := http.NewRequest("GET", BASE_URL+UPDATED_PATH, nil)
-	if err != nil {
-		log.Printf("failed new request: %v\n", err)
-		return nil
-	}
-
-	s, u := getTerm()
-	values := url.Values{}
-	values.Add("since", s)
-	values.Add("until", u)
-	req.URL.RawQuery = values.Encode()
-
-	req.SetBasicAuth(BASIC_USER, BASIC_TOKEN)
-	req.Header.Add("Content-Type", "application/json")
-
-	return req
-}
-
-func getTerm() (string, string) {
+func getTerm() map[string]string {
 	// ボードのタイムゾーンに合わせる
 	location := "Asia/Tokyo"
 
@@ -80,5 +62,6 @@ func getTerm() (string, string) {
 	s := time.Date(n.Year(), n.Month(), n.Day()-1, 9, 0, 0, 0, loc)
 	u := time.Date(n.Year(), n.Month(), n.Day(), 9, 0, 0, 0, loc)
 
-	return strconv.FormatInt(s.Unix(), 10) + "000", strconv.FormatInt(u.Unix(), 10) + "000"
+	return map[string]string{"since": strconv.FormatInt(s.Unix(), 10) + "000",
+		"until": strconv.FormatInt(u.Unix(), 10) + "000"}
 }

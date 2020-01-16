@@ -4,11 +4,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
-	"net/http"
-
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
+	"io/ioutil"
+	"log"
+	"net/http"
+	"os"
 )
 
 type PersonResponse struct {
@@ -71,13 +72,26 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		ids = append(ids, v.WorklogID)
 	}
 
+	if len(ids) == 0 {
+		log.Println("id is not found")
+		os.Exit(0)
+	}
+
 	// IDを元にissue情報を取得
+	issues := getIssues(ids)
+	if len(*issues) == 0 {
+		log.Println("issues is not found")
+		os.Exit(0)
+	}
 
 	// メンバーごとにissueを所定の形式に変換
+	// TODO: メモリ管理
+	memberTimeSums := getMemberTimeSums(issues)
+	log.Println(memberTimeSums)
 
 	// s3アップロード
 
-	// slackへ投稿？
+	// slackへ投稿？クライアント側の処理にする？
 
 	return events.APIGatewayProxyResponse{
 		Body:       fmt.Sprintf("Hello, %v", string(ip)+string(format(person))),
