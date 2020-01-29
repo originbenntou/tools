@@ -1,0 +1,14 @@
+{
+  "url": "https://www.google.com/?hl=ja",
+  "params": {
+    "header": {
+      "test": "test"
+    },
+    "get": {
+      "test": "test"
+    },
+    "post": {
+      "test": "test"
+    }
+  }
+}

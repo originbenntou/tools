@@ -1,0 +1,16 @@
+swagger-editor:
+  image: swaggerapi/swagger-editor
+  container_name: "test-swagger-editor"
+  ports:
+    - "8081:8080"
+
+swagger-ui:
+  image: swaggerapi/swagger-ui
+  container_name: "test-swagger-ui"
+  ports:
+    - "8082:8080"
+  volumes:
+    - ./test.yml:/test.yml
+  environment:
+    SWAGGER_JSON: /test.yml
+
