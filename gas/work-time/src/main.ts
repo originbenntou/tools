@@ -12,7 +12,7 @@ const BASIC_USER  = "originbenntou8973@gmail.com";
 const BASIC_TOKEN = "amSPARFPAfI2bSS48V2O1818";
 
 const Member = [
-    "司 山本",
+    "mototsuka",
     "piyo",
     "fuga",
 ];
@@ -25,6 +25,7 @@ interface MemberWorkLog {
 interface Worklog {
     summary: string
     timeSpent: number
+    updated: string
 }
 
 interface Value {
@@ -80,7 +81,7 @@ function main() {
     const response = UrlFetchApp.fetch(BASE_URL + UPDATED_PATH + "?since=" + yesterday9, options);
     const updated: ResponseUpdated = JSON.parse(response.getContentText());
 
-    Logger.log(updated);
+    // Logger.log(updated);
 
     if (Object.keys(updated).length === 0) {
         console.info("updated is not found");
@@ -126,7 +127,7 @@ function main() {
                 const summary = JSON.parse(
                     UrlFetchApp.fetch(BASE_URL + ISSUE_PATH + "/" + v.issueId, options).getContentText()
                 )["fields"]["summary"];
-                worklogs.push({summary: summary, timeSpent: v.timeSpentSeconds});
+                worklogs.push({summary: summary, timeSpent: v.timeSpentSeconds, updated: v.updated});
             }
         });
         memberWorkLogs.push({name: name, worklogs: worklogs});
@@ -140,22 +141,102 @@ function main() {
         }
     ));
 
-    Logger.log(memberWorkLogs);
+    // Logger.log(memberWorkLogs);
 
     // スプレッドシート記述
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
     const today = Utilities.formatDate(now, "JST", "yyyy/MM/dd");
 
     let insertData = [];
+    // 新フォーマット（日付,人,内容,カテゴリ,時間）
+    // memberWorkLogs.forEach(memberInfo => {
+    //     memberInfo.worklogs.forEach(worklog => {
+    //         insertData.push([today, memberInfo.name, worklog.summary, worklog.timeSpent, Date.parse(worklog.updated)]);
+    //     });
+    // });
+
+    // 現フォーマット整形
+    let sum: number = 0;
+    let works: string[] = [];
+    let firstHalf: string = "";
+    let secondHalf: string = "";
+    let thirdHalf: string = "";
     memberWorkLogs.forEach(memberInfo => {
         memberInfo.worklogs.forEach(worklog => {
-            insertData.push([today, memberInfo.name, worklog.summary, worklog.timeSpent]);
+            sum += worklog.timeSpent;
+            works.push(worklog.summary);
+            // 午前集計
+            if (sum >= 3 * 60 * 60 && firstHalf == "") {
+                firstHalf = works.join("\n");
+                sum -= 3 * 60 * 60;
+                works = [];
+                return;
+            }
+            // 午後集計
+            if (sum >= 5 * 60 * 60 && secondHalf == "") {
+                secondHalf = works.join("\n");
+                sum -= 5 * 60 * 60;
+                works = [];
+                return;
+            }
         });
+        thirdHalf = works.join("\n");
+        if (thirdHalf == "") {
+            thirdHalf = secondHalf
+        }
+
+        insertData.push({
+            'date': today,
+            'name': memberInfo.name,
+            'morning': firstHalf,
+            'afternoon': secondHalf,
+            'night': thirdHalf,
+            'overtime': sum
+        });
+        sum = 0;
+        works = [];
+        firstHalf = secondHalf = thirdHalf = "";
     });
 
     // 日付列の最終行数を取得
     let lastRow = sheet.getRange("A:A").getValues().filter(String).length;
-    sheet.getRange(lastRow+1, 1, Member.length, insertData[0].length).setValues(insertData);
+    insertData.forEach((v) => {
+        sheet.getRange(lastRow+1, 1, 1, 3).setValues([[v.date, "9:00", "12:00"]]);
+        sheet.getRange(lastRow+1, 6, 1, 3).setValues([[v.name, "保守", v.morning]]);
+        lastRow++;
+        sheet.getRange(lastRow+1, 1, 1, 3).setValues([[v.date, "13:00", "18:00"]]);
+        sheet.getRange(lastRow+1, 6, 1, 3).setValues([[v.name, "開発", v.afternoon]]);
+        lastRow++;
+        if (v.night != "") {
+            let regular = new Date(
+                now.getFullYear(),
+                now.getMonth(),
+                now.getDate(),
+                18,
+                0,
+                0
+            );
+            let over = regular
+            over.setSeconds(over.getSeconds() + v.overtime);
+            sheet.getRange(lastRow+1, 1, 1, 3).
+            setValues([
+                [
+                    v.date,
+                    "18:00",
+                    over.getHours() + ":" + over.getMinutes(),
+                ]
+            ]);
+            sheet.getRange(lastRow+1, 6, 1, 3).
+            setValues([
+                [
+                    v.name,
+                    "開発",
+                    v.night
+                ]
+            ]);
+            lastRow++;
+        }
+    });
 
     console.info("Record Success");
 
