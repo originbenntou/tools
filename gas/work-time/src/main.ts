@@ -64,6 +64,8 @@ interface ResponseIssue {
 }
 
 function main() {
+    setTrigger()
+
     // worklog取得
     const options = {
         contentType: "application/json",
@@ -73,7 +75,7 @@ function main() {
     const now = new Date();
     let beforeBusinessDay10 = modifyUntillBusinessDay(now)
 
-    const response = UrlFetchApp.fetch(BASE_URL + UPDATED_PATH + "?since=" + beforeBusinessDay10, options);
+    const response = UrlFetchApp.fetch(BASE_URL + UPDATED_PATH + "?since=" + beforeBusinessDay10.getTime(), options);
     const updated: ResponseUpdated = JSON.parse(response.getContentText());
 
     // Logger.log(updated);
@@ -142,6 +144,7 @@ function main() {
         (a, b) => {return (a.summary > b.summary) ? 1 : -1;
         }
     ));
+    // 8時間記入がない場合メンバーはアラートに出して、処理から排除
 
     // Logger.log(memberWorkLogs);
 
@@ -169,20 +172,30 @@ function main() {
             works.push(worklog.summary);
             // 午前集計
             if (sum >= 3 * 60 * 60 && firstHalf == "") {
-                firstHalf = works.join("\n");
+                // 数回記録することによるsummary重複排除
+                let filtered = works.filter((e, i, self) => {
+                    return self.indexOf(e) === i
+                })
+                firstHalf = filtered.join("\n");
                 sum -= 3 * 60 * 60;
                 works = [];
                 return;
             }
             // 午後集計
             if (sum >= 5 * 60 * 60 && secondHalf == "") {
-                secondHalf = works.join("\n");
+                let filtered = works.filter((e, i, self) => {
+                    return self.indexOf(e) === i
+                })
+                secondHalf = filtered.join("\n");
                 sum -= 5 * 60 * 60;
                 works = [];
                 return;
             }
         });
-        thirdHalf = works.join("\n");
+        let filtered = works.filter((e, i, self) => {
+            return self.indexOf(e) === i
+        })
+        thirdHalf = filtered.join("\n");
         if (thirdHalf == "") {
             thirdHalf = secondHalf
         }
@@ -246,6 +259,14 @@ function main() {
     // 翌日、残業などの時間調整を許容できるようにする
     // module化
     // タスクをカテゴリ化する（JIRAの何かを利用）
+}
+
+const setTrigger = (): void => {
+    let setTime = new Date();
+    setTime.setDate(setTime.getDate() + 1)
+    setTime.setHours(0)
+    setTime.setMinutes(45)
+    ScriptApp.newTrigger('testMethod').timeBased().at(setTime).create();
 }
 
 const modifyUntillBusinessDay = (date: Date): Date => {
