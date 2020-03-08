@@ -71,14 +71,9 @@ function main() {
     };
 
     const now = new Date();
-    let yesterday9 = new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        now.getDate() - 100,
-        9
-    ).getTime();
+    let beforeBusinessDay10 = modifyUntillBusinessDay(now)
 
-    const response = UrlFetchApp.fetch(BASE_URL + UPDATED_PATH + "?since=" + yesterday9, options);
+    const response = UrlFetchApp.fetch(BASE_URL + UPDATED_PATH + "?since=" + beforeBusinessDay10, options);
     const updated: ResponseUpdated = JSON.parse(response.getContentText());
 
     // Logger.log(updated);
@@ -88,10 +83,17 @@ function main() {
         return;
     }
 
+    let today10 = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate(),
+        10
+    ).getTime();
     let worklogIds: number[] = [];
     updated.values.forEach(v => {
-        // 昨日9時〜今日9時までのworklogのみ
-        if (v.updatedTime < now.getTime()) {
+        // updatedがuntillが使えない
+        // 前営業日の10:00:00〜今日9:59:59までのworklogのみ
+        if (v.updatedTime < today10) {
             worklogIds.push(v.worklogId);
         }
     });
@@ -244,4 +246,25 @@ function main() {
     // 翌日、残業などの時間調整を許容できるようにする
     // module化
     // タスクをカテゴリ化する（JIRAの何かを利用）
+}
+
+const modifyUntillBusinessDay = (date: Date): Date => {
+    let yesterday10 = new Date(
+        date.getFullYear(),
+        date.getMonth(),
+        date.getDate() - 1,
+        10
+    )
+    
+    if (!isBusinessDay(yesterday10)) modifyUntillBusinessDay(yesterday10)
+    
+    return yesterday10
+}
+
+const isBusinessDay = (date: Date): boolean => {
+    if (date.getDay() == 0 || date.getDay() == 6) {
+        return false;
+    }
+    const calJa = CalendarApp.getCalendarById('ja.japanese#holiday@group.v.calendar.google.com');
+    return calJa.getEventsForDay(date).length <= 0;
 }
