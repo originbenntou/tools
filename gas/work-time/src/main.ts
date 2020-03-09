@@ -144,7 +144,17 @@ function main() {
         (a, b) => {return (a.summary > b.summary) ? 1 : -1;
         }
     ));
-    // 8時間記入がない場合メンバーはアラートに出して、処理から排除
+    // 8時間記入がない場合メンバーはアラートに出す
+    let over8: number
+    memberWorkLogs.filter((e, i, self) => {
+        e.worklogs.forEach(ee => {
+            over8 += ee.timeSpent
+        })
+        if (over8 < 8 * 60 * 60) {
+            console.log(e.name + "is less than 8")
+            over8 = 0
+        }
+    })
 
     // Logger.log(memberWorkLogs);
 
