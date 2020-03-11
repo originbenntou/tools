@@ -1,0 +1,14 @@
+{
+	"dev": [
+		"hoge",
+		"piyo"
+	],
+	"stg": [
+		"hoge",
+		"piyo"
+	],
+	"prd": [
+		"hoge",
+		"piyo"
+	]
+}
